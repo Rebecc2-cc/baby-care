@@ -54,6 +54,13 @@
   .stat{background:#fff;border-radius:14px;padding:12px;box-shadow:var(--sh);}
   .stat .n{font-size:26px;font-weight:800;color:var(--pri-d);}
   .stat .l{font-size:14.5px;color:var(--muted);}
+  .catwrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .catwrap .billcat{flex:1 1 46%;min-width:150px;display:flex;align-items:center;gap:9px;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:var(--sh);}
+  .catwrap .cn,#billList .cn{font-weight:800;font-size:13px;padding:3px 10px;border-radius:9px;white-space:nowrap;color:#6b5a45;}
+  .catwrap .cnt{font-size:13px;color:#999;flex:1;}
+  .catwrap .amt{font-size:17px;font-weight:800;color:#333;}
+  .catEmpty{background:#FFFBF0;border:1px dashed #F0CF8C;color:#B0893C;border-radius:12px;padding:12px 14px;font-size:14px;margin:0 0 14px;text-align:center;}
+  .hint{font-size:14px;color:#999;text-align:center;margin:12px 0 0;}
   input,select,textarea{width:100%;font-size:17px;padding:12px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--text);font-family:inherit;}
   textarea{resize:vertical;min-height:52px;}
   label.fld{display:block;font-size:15px;color:#777;margin:10px 0 4px;font-weight:600;}
@@ -168,20 +175,6 @@
   .menuCard .it{font-size:14.5px;background:#fff;border-radius:11px;padding:8px 12px;margin:6px 0;}
   .menuCard .st{font-size:14px;color:#666;padding:0 4px;margin:4px 0;}
   .menuCard .st li{margin:3px 0;}
-  .supbar{height:8px;background:#F0EAE3;border-radius:99px;overflow:hidden;margin:7px 0 3px;}
-  .supbar i{display:block;height:100%;border-radius:99px;}
-  .supstate{font-size:12px;font-weight:700;}
-  .supimg{width:100%;height:120px;border-radius:12px;background:#F6F1EB;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px;cursor:pointer;position:relative;}
-  .supimg img{width:100%;height:100%;object-fit:cover;}
-  .supimg .plh{color:#B8AFA4;font-size:13px;display:flex;align-items:center;gap:6px;}
-  .supimg .delimg{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:none;font-size:14px;cursor:pointer;display:none;align-items:center;justify-content:center;}
-  .supimg:hover .delimg{display:flex;}
-  .supdays{font-size:13px;font-weight:700;margin:4px 0;}
-  .supdays.low{color:#E5484D;}
-  .supdays.mid{color:#F0A020;}
-  .supdays.ok{color:#46C28B;}
-  .suphistory{font-size:12px;color:#888;margin-top:6px;}
-  .suphistory li{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #EDE7DF;}
   .ok{color:var(--green-d);}.mid{color:#C98A1B;}.low{color:#E5484D;}
   .tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap;}
   .tabs button{min-height:46px;padding:0 18px;border:1px solid var(--line);background:#fff;border-radius:14px;font-weight:700;font-size:16px;cursor:pointer;color:#666;}
@@ -811,8 +804,8 @@ function load(){
   if(!Array.isArray(S.photos))S.photos=[];
   if(!(S.photoCur>=0))S.photoCur=-1;
   buildWheel();
-  // 迁移旧 supplies 数据
-  if(Array.isArray(S.supplies)){S.supplies.forEach(s=>{if('remain' in s||'th' in s){s.availDays=Math.max(1,Math.round((s.availDays)||(s.remain||0)));delete s.remain;delete s.th;}if(!s.history)s.history=[{date:s.date,price:s.price}];if(!('img' in s))s.img='';if(!('qty' in s))s.qty=1;if(!('unit' in s))s.unit='件';if(!s.date||!/^\d{4}-\d{2}-\d{2}$/.test(s.date))s.date=today();});}
+  // 迁移旧「用品/补货」数据 → 购物账单（去掉库存/照片/价格历史，分类归一，缺失字段补齐）
+  if(Array.isArray(S.supplies)){S.supplies.forEach(s=>{delete s.availDays;delete s.remain;delete s.th;delete s.img;delete s.history;if(!s.name||typeof s.name!=='string')s.name='未命名';if(s.price===undefined||isNaN(+s.price))s.price=0;if(!('qty' in s)||!s.qty)s.qty=1;if(!('unit' in s)||!s.unit)s.unit='件';if(BILL_CATS.indexOf(s.cat)<0)s.cat='其他';if(!s.date||!/^\d{4}-\d{2}-\d{2}$/.test(s.date))s.date=today();});}
   save();
 }
 function save(){localStorage.setItem(P+'data',JSON.stringify(S));}
@@ -829,9 +822,9 @@ function seed(){
   S.allergen={'谷物类':{'大米':addD(t,-40)},'蔬菜类':{'南瓜':addD(t,-38),'胡萝卜':addD(t,-35),'土豆':addD(t,-32)},'水果类':{'苹果':addD(t,-30),'香蕉':addD(t,-28)},'蛋奶类':{'蛋黄':addD(t,-26)}};
   S.gamesDone=[{id:uid(),date:addD(t,-2),gid:dayIdx(addD(t,-2))%GAMES.length}];
   S.supplies=[
-    {id:uid(),name:'纸尿裤 L码',cat:'纸尿裤',date:addD(t,-15),price:99,availDays:20,qty:1,unit:'包',img:'',history:[{date:addD(t,-15),price:99}]},
-    {id:uid(),name:'婴儿湿巾',cat:'清洁',date:addD(t,-10),price:29,availDays:12,qty:3,unit:'包',img:'',history:[{date:addD(t,-10),price:29}]},
-    {id:uid(),name:'3段奶粉',cat:'奶粉',date:addD(t,-7),price:268,availDays:30,qty:2,unit:'罐',img:'',history:[{date:addD(t,-7),price:268}]}
+    {id:uid(),name:'纸尿裤 L码',cat:'尿不湿',date:addD(t,-15),price:99,qty:1,unit:'包'},
+    {id:uid(),name:'婴儿湿巾',cat:'尿不湿',date:addD(t,-10),price:29,qty:3,unit:'包'},
+    {id:uid(),name:'3段奶粉',cat:'奶粉',date:addD(t,-7),price:268,qty:2,unit:'罐'}
   ];
   S.seed=true;
 }
@@ -867,8 +860,6 @@ function ageYears(){if(!S.birth)return 0;const [y,m,d]=S.birth.split('-').map(Nu
   }
   function todayGame(){const g=gameGroupIcons();if(!g)return dayIdx(today())%GAMES.length;return g[dayIdx(today())%g.length];}
   function gameByIdBounded(i){const g=gameGroupIcons();if(!g)return gameById(i);return gameById(g[((i%g.length)+g.length)%g.length]);}
-  function supplyLeft(s){const d=s.date&&/^\d{4}-\d{2}-\d{2}$/.test(s.date)?s.date:today();const used=daysDiff(d,today());return Math.max(0,(s.availDays||0)-used);}
-  function supplyState(s){const left=supplyLeft(s);return left<=3?{t:'该补货',c:'low'}:left<=7?{t:'快用完',c:'mid'}:{t:'充足',c:'ok'};}
   function pendingGames(){
   const t=today(),out=[];
   for(let i=0;i<10;i++){
@@ -883,7 +874,6 @@ function todayGameFor(ds){ /* 按具体日期回当月龄内的游戏（打卡�
   const g=gameGroupIcons();if(!g)return dayIdx(ds)%GAMES.length;
   return g[((dayIdx(ds)%g.length)+g.length)%g.length];
 }
-function lowSupplies(){return S.supplies.filter(s=>supplyLeft(s)<=3);}
 /* 故事年龄标签解析："2岁+"→24个月；返回本月龄可看的 STORIES 索引集 */
 function storyMinMonth(st){const m=(st[1]||'').match(/(\d+)\s*岁/);return m?((+m[1])*12):0;}
 function storyAgeIdxArr(){
@@ -915,7 +905,7 @@ function ageTip(){
   </div>`;
 }
 /* ================= 导航 ================= */
-const NAV=[['arch','档案','📂','#FFF3D6'],['food','辅食','🍲','#FFEDE8'],['learn','学习','🎈','#E3ECFF'],['shop','补货','🧴','#E8F4FC']];
+const NAV=[['arch','档案','📂','#FFF3D6'],['food','辅食','🍲','#FFEDE8'],['learn','学习','🎈','#E3ECFF'],['shop','购物','🛒','#E8F4FC']];
 function renderNav(){
   document.getElementById('nav').innerHTML=NAV.map(([k,n,e,c])=>`<a data-p="${k}" class="${page===k?'on':''}"><span class="nicon" style="background:${c}">${e}</span>${n}</a>`).join('');
   document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>{page=a.dataset.p;render();});
@@ -1555,8 +1545,101 @@ const STORIES=[
 /* ================= 学习 ================= */
 let LEARN_TAB='game';
 function rLearn(){
-  return `<div id="learnBody"><div class="tabs" style="margin-bottom:14px;"><button data-lt="game" class="${LEARN_TAB==='game'?'on':''}">🎮 游戏</button><button data-lt="story" class="${LEARN_TAB==='story'?'on':''}">📖 故事</button><button data-lt="en" class="${LEARN_TAB==='en'?'on':''}">🔤 英文启蒙</button></div>
-  ${learnBodyHtml(LEARN_TAB)}</div>`;
+  if(LEARN_PAGE==='game-lib')return learnLibBar()+learnGameLib();
+  if(LEARN_PAGE==='story-lib')return learnLibBar()+learnStoryLib();
+  if(LEARN_PAGE==='en-lib')return learnLibBar()+rEn();
+  return todayLearn();
+}
+let LEARN_PAGE='today'; // today | game-lib | story-lib | en-lib
+function learnLibBar(){
+  return `<div class="row" style="margin:4px 0 14px;"><button class="tbtn" data-learn-back="today">‹ 返回今日学习</button><span style="flex:1"></span></div>`;
+}
+function learnLibBtn(label,page){
+  return `<button class="tbtn" data-learn-lib="${page}">🔍 浏览全部${label}</button>`;
+}
+function todayLearn(){
+  const di=dayIdx(today());
+  // 今日游戏
+  const gs=gameGroupIcons();const gid=gs?gs[di%gs.length]:di%GAMES.length;
+  const g=gameById(gid);
+  const isDone=S.gamesDone.some(x=>x.date===today()&&x.gid===gid);
+  // 今日故事
+  const sa=storyAgeIdxArr();const storyArr=sa||STORIES.map((_,i)=>i);
+  const si=storyArr[(di+storyOff)%storyArr.length];curStoryIdx=si;
+  const st=STORIES[si];
+  // 今日英文：5 类每日轮换
+  const enKinds=[['sss','🎵 磨耳朵儿歌'],['story','📖 英文小故事'],['abc','🔤 认识一个字母'],['words','📚 学一个单词'],['talk','💬 一句生活口语']];
+  const [ekind,elabel]=enKinds[di%5];
+  const enHtml=todayEnOne(ekind,di);
+  return `<div class="sec">
+    <h2>📚 今日学习</h2>
+    <p class="sub">每天就安排这 3 样，轻松完成；明天自动换新内容</p>
+  </div>
+  <div class="learnGrid">
+    ${todayGameCard(g,gid,isDone)}
+    ${todayStoryCard(st)}
+    ${todayEnCard(elabel,enHtml)}
+  </div>`;
+}
+function todayGameCard(g,gid,isDone){
+  const c=CAT[g.g];
+  return `<div class="item learnCard">
+    <div class="learnHead"><span class="ltag" style="background:#E3ECFF;">🎮 今日游戏</span><span style="flex:1"></span>${learnLibBtn('游戏库','game-lib')}</div>
+    <div class="top" style="margin-top:8px;"><span class="badge ${g.g}">${c.n}</span><span class="nm">${esc(g.n)}</span></div>
+    <div class="nt">🧺 ${esc(g.it)}　💡 ${esc(g.sk)}</div>
+    <div class="nt">👣 ${esc(g.st)}</div>
+    <div class="row" style="margin-top:10px;"><button class="btn ${isDone?'g':'p'} sm" data-gdone="${gid}" data-gdate="${today()}">${isDone?'✅ 今天已打卡':'完成了打个卡'}</button></div>
+  </div>`;
+}
+function todayStoryCard(st){
+  return `<div class="item learnCard">
+    <div class="learnHead"><span class="ltag" style="background:#FFEBDD;">📖 今日故事</span><span style="flex:1"></span>${learnLibBtn('故事库','story-lib')}</div>
+    <div class="top" style="margin-top:8px;"><span class="badge" style="background:#FFD9A8;color:#B2693C;">${esc(st[2])}</span><span class="nm">${esc(st[0])}</span><span class="dt">👶 ${esc(st[1])}</span></div>
+    <div class="nt">${esc(st[3])}</div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn p sm" id="storyPlay">🔊 听故事</button>
+      <button class="btn g sm" id="storyNext">🔄 换一个</button>
+    </div>
+  </div>`;
+}
+function todayEnCard(elabel,enHtml){
+  return `<div class="item learnCard">
+    <div class="learnHead"><span class="ltag" style="background:#EFE9FF;">${elabel}</span><span style="flex:1"></span>${learnLibBtn('英文','en-lib')}</div>
+    <div style="margin-top:6px;">${enHtml}</div>
+  </div>`;
+}
+function todayEnOne(kind,di){
+  if(kind==='sss'){const [n,tp,p,em,lyr]=SSS[di%SSS.length];
+    return `<div class="nt" style="font-size:17px;font-weight:800;">${esc(n)} <span class="tp" style="font-size:13px;">${esc(tp)}</span></div>
+      <div class="nt">💡 ${esc(p)}</div>
+      <div class="nt" style="font-size:14px;">🎵 ${esc(lyr)}</div>
+      <div class="row" style="margin-top:8px;gap:8px;"><button class="btn p sm" data-spk="${esc(lyr)}">🔊 听儿歌</button><span class="muted" style="font-size:12px;">每天一首，反复磨耳朵</span></div>`;}
+  if(kind==='story'){const s=EN_STORIES[di%EN_STORIES.length];const lines=s.en.slice(0,2);
+    return `<div class="nt" style="font-size:17px;font-weight:800;">📖 ${esc(s.t)}</div>
+      ${lines.map((l,k)=>`<div class="nt" style="margin:4px 0;"><button class="spk" style="border:none;background:none;cursor:pointer;font-size:13px;color:var(--pri-d);" data-spk="${esc(l)}">🔊</button> ${esc(l)}<div class="muted" style="font-size:12px;margin-left:22px;">${esc(s.zh[k])}</div></div>`).join('')}
+      <div class="row" style="margin-top:8px;">想读更多，点右上角「浏览全部英文」</div>`;}
+  if(kind==='abc'){const [L,W,C,em]=ABC[di%ABC.length];const line=L+'. '+L+' is for '+W+'. '+W;
+    return `<div class="abcLine"><b style="font-size:34px;margin-right:8px;">${L}</b><span style="font-size:18px;">${em} · ${W}</span><div class="muted" style="font-size:13px;">${C}</div></div>
+      <div class="row" style="margin-top:8px;"><button class="btn p sm" data-spk="${esc(line)}">🔊 读：A is for Apple</button></div>`;}
+  if(kind==='words'){const t=WORDS[di%WORDS.length];const [en,zh,em]=t.w[di%t.w.length];
+    return `<div class="wordLine" style="display:flex;align-items:center;gap:8px;font-size:20px;"><span>${em}</span><b>${esc(en)}</b><span class="muted" style="font-size:14px;color:#888;">${esc(zh)}</span></div>
+      <div class="row" style="margin-top:8px;"><button class="btn p sm" data-spk="${esc(en)}">🔊 读这个词</button></div>`;}
+  const t=TALK[di%TALK.length];const [en,zh]=t.p[di%t.p.length];
+  return `<div class="talkLine"><b style="font-size:19px;">${esc(en)}</b><div class="muted" style="color:#888;">${esc(zh)}</div></div>
+    <div class="row" style="margin-top:8px;"><button class="btn p sm" data-spk="${esc(en)}">🔊 跟读</button></div>`;
+}
+function learnGameLib(){
+  return `<div class="sec"><h2>🎁 小宝藏库 · 游戏库</h2>
+    <p class="sub">家里现成就能玩的游戏；完成会在「档案-奖状墙」点亮对应技能</p>
+    <input id="actQ" placeholder="🔍 搜索游戏…" style="margin-bottom:12px;">
+    <div class="chiprow" style="margin-bottom:12px;"><button data-ac="all" class="on">全部</button>${['gross','fine','cog','lang','soc'].map(c=>`<button data-ac="${c}"><span class="badge ${c}" style="transform:scale(.85)">${CAT[c].n}</span></button>`).join('')}</div>
+    <div class="grid c2" id="actList">${actList('all','')}</div></div>`;
+}
+function learnStoryLib(){
+  return `<div class="sec"><h2>📚 故事库（${STORIES.length} 个）</h2>
+    <p class="sub">按名字搜索，点一个听故事</p>
+    <input id="storyQ" placeholder="🔍 搜索故事名…" style="margin-bottom:10px;">
+    <div id="storyList">${storyListHtml('')}</div></div>`;
 }
 /* ================= 故事（今日推荐 + 故事库） ================= */
 function rStory(){
@@ -1608,30 +1691,53 @@ function actList(fc,q){
     <div class="tx"><span class="chip" style="background:#EFE9FF;color:#7A5CF0;">建议：${gAge(ai)} 个月+</span></div></div>`;
   }).join('');
 }
-/* ================= 生活用品 ================= */
+/* ================= 购物 · 宝宝物品账单 ================= */
+const BILL_CATS=['奶粉','尿不湿','衣物','玩具','辅食','医疗','其他'];
+const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','衣物':'#FFEBDD','玩具':'#E5EBFF','辅食':'#FFF3D1','医疗':'#E8E5FA','其他':'#EDEDED'};
+let shopView={mode:'month',y:new Date().getFullYear(),m:new Date().getMonth()+1};
+function billsSorted(){return S.supplies.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));}
+function billInView(b){const d=b.date||'';const y=shopView.y,mm=(shopView.m<10?'0':'')+shopView.m;return shopView.mode==='year'?d.slice(0,4)===String(y):d.slice(0,7)===`${y}-${mm}`;}
+function billCat(b){return BILL_CATS.indexOf(b.cat)>=0?b.cat:'其他';}
+function billMoney(b){return ((+b.price)||0)*((+b.qty)||1);}
+function fmtMoney(n){return (Math.round(n*100)/100).toLocaleString('zh-CN');}
+function shopPeriodLabel(){return shopView.mode==='month'?`${shopView.y}年${shopView.m}月`:`${shopView.y}年`;}
 function rShop(){
-  const lows=lowSupplies();
+  const list=billsSorted().filter(billInView);
+  const total=list.reduce((s,b)=>s+billMoney(b),0);
+  const catSum={};list.forEach(b=>{const c=billCat(b);catSum[c]=(catSum[c]||0)+billMoney(b);});
+  const catRows=BILL_CATS.filter(c=>catSum[c]).map(c=>{
+    const n=list.filter(b=>billCat(b)===c).length;
+    return `<div class="billcat"><span class="cn" style="background:${CAT_COLOR[c]||'#eee'}">${c}</span><span class="cnt">${n}笔</span><b class="amt">¥${fmtMoney(catSum[c])}</b></div>`;
+  }).join('');
   return `<div class="sec">
-    <h2>${I.sup}生活用品 · 补货提醒</h2>
-    <p class="sub">记录购买时间与可用天数，自动计算剩余时间，快用完时提醒补货</p>
-    ${lows.length?`<div class="banner danger">⚠️ 需要补货：${lows.map(s=>`「${esc(s.name)}」剩余 ${supplyLeft(s)} 天`).join('、')}</div>`:''}
-    <button class="btn p" id="addSup">${I.plus}记录一件用品</button>
+    <h2>${I.sup}购物 · 宝宝物品账单</h2>
+    <p class="sub">记下每笔购买的时间、价格和数量，自动汇总月度 / 年度花费</p>
+    <button class="btn p" id="addBill">＋ 记一笔</button>
   </div>
-  <div id="supList">${supList()}</div>`;
+  <div class="grid c2" style="margin:14px 0;">
+    <div class="stat"><div class="n">¥${fmtMoney(total)}</div><div class="l">${shopView.mode==='month'?'本月':'本年'}合计</div></div>
+    <div class="stat"><div class="n">${list.length}</div><div class="l">${shopView.mode==='month'?'本月':'本年'}笔数</div></div>
+  </div>
+  <div class="row" style="margin:4px 0 16px;flex-wrap:nowrap;">
+    <div class="seg"><button class="${shopView.mode==='month'?'on':''}" data-smmode="month">月度</button><button class="${shopView.mode==='year'?'on':''}" data-smmode="year">年度</button></div>
+    <span style="flex:1"></span>
+    <button class="tbtn" data-smnav="-1">‹ 上${shopView.mode==='month'?'月':'年'}</button>
+    <b style="min-width:96px;text-align:center;font-size:16px;">${shopPeriodLabel()}</b>
+    <button class="tbtn" data-smnav="1">下${shopView.mode==='month'?'月':'年'} ›</button>
+  </div>
+  ${catRows?`<div class="catwrap">${catRows}</div>`:`<div class="catEmpty ${list.length?'hasrows':''}">${list.length?'这个时段还没有账单':'还没有账单，点「＋ 记一笔」开始记第一笔吧'}</div>`}
+  <div id="billList">${billList(list)}</div>`;
 }
-function supList(){
-  if(!S.supplies.length)return `<div class="empty">还没有用品记录，点上面「记录一件用品」</div>`;
-  return `<div class="grid c2">${S.supplies.map(s=>{const st=supplyState(s);const left=supplyLeft(s);const img=s.img?`<img src="${esc(s.img)}">`:`<span class="plh">📷 点击上传照片</span>`;const hist=(s.history||[]).slice(0,3);return `<div class="item" data-sid="${s.id}">
-    <div class="supimg" data-uimg="${s.id}">${img}</div>
-    <div class="top"><span class="nm">${esc(s.name)}</span><span class="dt">${esc(s.cat)}</span></div>
-    <div class="nt">购买 ${s.date} · ¥${s.price} · ${s.qty||1}${s.unit||'件'}</div>
-    <div class="supdays ${st.c}">${st.t} · 剩余 ${left} 天</div>
-    <div class="supbar"><i style="width:${Math.min(100,Math.max(5,left/(s.availDays||1)*100))}%;background:${st.c==='low'?'#E5484D':st.c==='mid'?'#F0A020':'#46C28B'}"></i></div>
-    ${hist.length?`<div class="suphistory"><b>历史价格</b><ul>${hist.map((h,i)=>`<li><span>${h.date} ¥${h.price} ${h.qty||1}${h.unit||''}</span><button data-dhi="${i}" data-dsid="${s.id}" style="background:none;border:none;color:#E5484D;font-size:15px;line-height:1;cursor:pointer;padding:0 2px;" title="删除这条购买记录">×</button></li>`).join('')}</ul></div>`:''}
-    <div class="row" style="margin-top:8px;"><span style="flex:1"></span>
-      <button class="btn p sm" data-bsup="${s.id}">${I.plus}新购</button>
-      <button class="btn g sm" data-esup="${s.id}">${I.edit}改</button>
-      <button class="btn g sm warn" data-dsup="${s.id}">${I.trash}</button></div></div>`;}).join('')}</div>`;
+function billList(list){
+  if(!list.length)return `<div class="empty">${(S.supplies||[]).length?'这个时段没有记录':'还没有账单，点「＋ 记一笔」添加第一笔'}</div>`;
+  return `<div class="grid c2">${list.map(b=>{const c=billCat(b);return `<div class="item">
+      <div class="top"><span class="nm">${esc(b.name)}</span><span class="cn" style="background:${CAT_COLOR[c]||'#eee'}">${c}</span></div>
+      <div class="nt">${esc(b.date)} · ${b.qty||1}${esc(b.unit||'件')} × ¥${b.price===undefined?'':esc(String(b.price))}</div>
+      <div class="row" style="margin-top:8px;"><b class="amt" style="font-size:20px;color:var(--pri-d);">¥${fmtMoney(billMoney(b))}</b><span style="flex:1"></span>
+        <button class="btn g sm" data-ebill="${b.id}">${I.edit}改</button>
+        <button class="btn g sm warn" data-dbill="${b.id}">${I.trash}</button></div>
+    </div>`;}).join('')}</div>
+    <p class="hint">共 ${list.length} 笔 · 合计 ¥${fmtMoney(list.reduce((s,x)=>s+billMoney(x),0))}</p>`;
 }
 function openStoryDetail(i){
   const s=STORIES[i];if(!s)return;
@@ -1789,16 +1895,19 @@ function bindPage(){
     const q=document.getElementById('actQ')?document.getElementById('actQ').value:'';
     document.getElementById('actList').innerHTML=actList(b.dataset.ac,q);
   });
-  const as=document.getElementById('addSup');if(as)as.onclick=()=>openSup();
-  document.querySelectorAll('[data-esup]').forEach(b=>b.onclick=()=>openSup(b.dataset.esup));
-  document.querySelectorAll('[data-dsup]').forEach(b=>b.onclick=()=>{if(confirm('删除这件用品记录？')){S.supplies=S.supplies.filter(x=>x.id!==b.dataset.dsup);save();render();}});
-  document.querySelectorAll('[data-bsup]').forEach(b=>b.onclick=()=>openBuy(b.dataset.bsup));
-  document.querySelectorAll('[data-dhi]').forEach(b=>b.onclick=()=>{
-    const s=S.supplies.find(x=>x.id===b.dataset.dsid);if(!s)return;
-    const i=+b.dataset.dhi;
-    if(confirm('删除这条购买记录？（不影响当前库存）')){s.history.splice(i,1);save();render();}
+  const ab=document.getElementById('addBill');if(ab)ab.onclick=()=>openBill();
+  document.querySelectorAll('[data-ebill]').forEach(b=>b.onclick=()=>openBill(b.dataset.ebill));
+  document.querySelectorAll('[data-dbill]').forEach(b=>b.onclick=()=>{if(confirm('删除这笔账单？')){S.supplies=S.supplies.filter(x=>x.id!==b.dataset.dbill);save();render();}});
+  document.querySelectorAll('[data-smmode]').forEach(b=>b.onclick=()=>{shopView.mode=b.dataset.smmode;render();});
+  document.querySelectorAll('[data-smnav]').forEach(b=>b.onclick=()=>{
+    const d=+b.dataset.smnav;
+    if(shopView.mode==='month'){const nm=shopView.m+d;if(nm<1){shopView.m=12;shopView.y--;}else if(nm>12){shopView.m=1;shopView.y++;}else{shopView.m=nm;}}
+    else{shopView.y+=d;}
+    render();
   });
-  document.querySelectorAll('[data-uimg]').forEach(b=>b.onclick=()=>{const id=b.dataset.uimg;const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const s=S.supplies.find(x=>x.id===id);if(s){s.img=ev.target.result;save();render();}};r.readAsDataURL(f);};inp.click();});
+  // 今日学习：浏览全部库 / 返回今日学习
+  document.querySelectorAll('[data-learn-lib]').forEach(b=>b.onclick=()=>{LEARN_PAGE=b.dataset.learnLib;render();});
+  document.querySelectorAll('[data-learn-back]').forEach(b=>b.onclick=()=>{LEARN_PAGE='today';render();});
   // 故事：听故事 / 换一个 / 去故事库
   const sp=document.getElementById('storyPlay');
   if(sp)sp.onclick=()=>{const s=STORIES[curStoryIdx];if(s)speak(s[0]+'。'+s[3]);};
@@ -2244,63 +2353,33 @@ function addCustomAllergy(){
   inp.value='';save();buildWheel();render();
   toast('已记录过敏：'+names.join('、')+'，转盘和三餐都会自动避开');
 }
-function openSup(id){
-  const s=id?S.supplies.find(x=>x.id===id):null;
-  showSheet(`记录用品`,`
-    <label class="fld">名称</label><input id="sName" value="${esc(s? s.name:'')}" placeholder="如：纸尿裤 L码">
-    <label class="fld">类别</label>
-    <div class="seg">${['纸尿裤','奶粉','清洁','辅食','衣物','玩具','药品','其他'].map((c,i)=>`<button data-sc="${c}" class="${(s?s.cat:c)==='纸尿裤'?'on':''}">${c}</button>`).join('')}</div>
+function openBill(id){
+  const b=id?S.supplies.find(x=>x.id===id):null;
+  showSheet(b?`✏️ 编辑账单`:`＋ 记一笔`,`
+    <label class="fld">名称</label><input id="bName" value="${esc(b? b.name:'')}" placeholder="如：纸尿裤 L码">
+    <label class="fld">分类</label>
+    <div class="seg">${BILL_CATS.map(c=>`<button data-bc="${c}" class="${(b?b.cat:c)==='奶粉'?'on':''}">${c}</button>`).join('')}</div>
     <div class="grid c2">
-      <div><label class="fld">购买日期</label><input type="date" id="sDate" value="${esc(s? s.date:today())}"></div>
-      <div><label class="fld">价格 (元)</label><input type="number" id="sPrice" value="${s?s.price:''}" step="0.01"></div>
-      <div><label class="fld">可用天数</label><input type="number" id="sAvail" value="${s?s.availDays:''}" placeholder="如 30" step="1"></div>
-      <div><label class="fld">数量</label><input type="number" id="sQty" value="${s?s.qty:''}" placeholder="如 1" step="1"></div>
+      <div><label class="fld">购买日期</label><input type="date" id="bDate" value="${esc(b? b.date:today())}"></div>
+      <div><label class="fld">价格 (元)</label><input type="number" id="bPrice" value="${b?b.price:''}" step="0.01"></div>
+      <div><label class="fld">数量</label><input type="number" id="bQty" value="${b?b.qty:''}" placeholder="如 1" step="1" min="1"></div>
+      <div><label class="fld">单位</label><input id="bUnit" value="${esc(b? b.unit||'':'')}" placeholder="包 / 罐 / 瓶…"></div>
     </div>
-    <label class="fld">单位</label><input id="sUnit" value="${esc(s? s.unit||'':'')}" placeholder="包 / 罐 / 瓶 / 件…">
-    <div class="row" style="margin-top:14px;"><button class="btn p block" id="saveSup">保存</button></div>`);
-  let cat=s?s.cat:'纸尿裤';
-  document.querySelectorAll('#mask [data-sc]').forEach(b=>b.onclick=()=>{
-    document.querySelectorAll('#mask [data-sc]').forEach(x=>x.classList.remove('on'));b.classList.add('on');cat=b.dataset.sc;
+    <div class="row" style="margin-top:14px;"><button class="btn p block" id="saveBill">保存</button></div>`);
+  let cat=b?b.cat:'奶粉';
+  document.querySelectorAll('#mask [data-bc]').forEach(x=>x.onclick=()=>{
+    document.querySelectorAll('#mask [data-bc]').forEach(y=>y.classList.remove('on'));x.classList.add('on');cat=x.dataset.bc;
   });
-  document.getElementById('saveSup').onclick=()=>{
-    const name=document.getElementById('sName').value.trim();
-    const date=document.getElementById('sDate').value||today();
-    const price=parseFloat(document.getElementById('sPrice').value)||0;
-    const availDays=parseInt(document.getElementById('sAvail').value)||0;
-    const qty=parseInt(document.getElementById('sQty').value)||1;
-    const unit=document.getElementById('sUnit').value.trim()||'件';
-    if(!name){alert('请填写名称');return;}
-    if(s){Object.assign(s,{name,cat,date,price,availDays,qty,unit});}
-    else{S.supplies.push({id:uid(),name,cat,date,price,availDays,qty,unit,img:'',history:[{date,price}]});}
-    save();closeSheet();render();
-  };
-}
-function openBuy(id){
-  const s=S.supplies.find(x=>x.id===id);if(!s)return;
-  const curQty=s.qty||1,curUnit=s.unit||'件',curLeft=supplyLeft(s);
-  showSheet(`新购：${esc(s.name)}`,`
-    <div style="margin-bottom:10px;color:#888;font-size:13px;">当前库存：<b style="color:#333;">${curQty}${curUnit}</b>（剩余约 <b style="color:#333;">${curLeft}</b> 天）· 上次购买 ${s.date} · ¥${s.price}<br>记录后新购数量累加到库存，总剩余天数 = 原剩余 + 新购可用天数</div>
-    <label class="fld">新购日期</label><input type="date" id="bDate" value="${today()}">
-    <label class="fld">新购价格 (元)</label><input type="number" id="bPrice" value="${s.price}" step="0.01">
-    <div class="grid c2">
-      <div><label class="fld">数量</label><input type="number" id="bQty" value="${curQty}" step="1"></div>
-      <div><label class="fld">单位</label><input id="bUnit" value="${esc(curUnit)}" placeholder="包/罐/瓶…"></div>
-      <div><label class="fld">可用天数（新购这批）</label><input type="number" id="bAvail" value="${s.availDays||''}" placeholder="如 30" step="1"></div>
-    </div>
-    <div class="row" style="margin-top:14px;"><button class="btn p block" id="saveBuy">记录新购（累加库存）</button></div>`);
-  document.getElementById('saveBuy').onclick=()=>{
+  document.getElementById('saveBill').onclick=()=>{
+    const name=document.getElementById('bName').value.trim();
     const date=document.getElementById('bDate').value||today();
-    const price=parseFloat(document.getElementById('bPrice').value)||0;
+    const price=parseFloat(document.getElementById('bPrice').value);
     const qty=parseInt(document.getElementById('bQty').value)||1;
-    const unit=document.getElementById('bUnit').value.trim()||curUnit;
-    const avail=parseInt(document.getElementById('bAvail').value)||0;
-    s.date=date;s.price=price;s.unit=unit;
-    s.qty=curQty+qty; // 新购累加到原库存
-    // 总剩余天数 = 原库存剩余天数 + 新购这批数量可用天数（availDays 即「这批能用多少天」）
-    if(avail>0){s.availDays=curLeft+avail;}
-    s.history=s.history||[];
-    s.history.unshift({date,price,qty,unit});
-    if(s.history.length>10)s.history.pop();
+    const unit=document.getElementById('bUnit').value.trim()||'件';
+    if(!name){alert('请填写名称');return;}
+    if(isNaN(price)||price<0){alert('请填写正确的价格');return;}
+    if(b){Object.assign(b,{name,cat,date,price,qty,unit});}
+    else{S.supplies.push({id:uid(),name,cat,date,price,qty,unit});}
     save();closeSheet();render();
   };
 }
@@ -2573,7 +2652,7 @@ render();
     },
     sup: function (s) {
       return (s.supplies || []).filter(function (x) { return x && x.id; }).map(function (x) {
-        return { rid: 'sp|' + x.id, c: { '用品ID': x.id, '名称': x.name || '', '类别': x.cat || '', '购买日期': x.date || '', '价格': x.price, '可用天数': x.availDays, '数量': x.qty, '单位': x.unit || '件', '价格历史': jarr(x.history) } };
+        return { rid: 'sp|' + x.id, c: { '账单ID': x.id, '名称': x.name || '', '分类': x.cat || '', '购买日期': x.date || '', '价格': x.price, '数量': x.qty, '单位': x.unit || '件' } };
       });
     },
     rc: function (s) {
@@ -2629,9 +2708,7 @@ render();
     },
     sup: function (s, rows) {
       s.supplies = (rows || []).map(function (r) {
-        var h = tryParse(r.c['价格历史']);
-        if (!Array.isArray(h) || !h.length) { h = [{ date: r.c['购买日期'] || '', price: num(r.c['价格']) || 0 }]; }
-        return { id: r.c['用品ID'] || String(r.rid).slice(3), name: r.c['名称'] || '', cat: r.c['类别'] || '', date: r.c['购买日期'] || '', price: num(r.c['价格']) || 0, availDays: num(r.c['可用天数']) || 1, qty: num(r.c['数量']) || 1, unit: r.c['单位'] || '件', img: '', history: h };
+        return { id: r.c['账单ID'] || String(r.rid).slice(3), name: r.c['名称'] || '', cat: (BILL_CATS.indexOf(r.c['分类']) >= 0 ? r.c['分类'] : '其他'), date: r.c['购买日期'] || '', price: num(r.c['价格']) || 0, qty: num(r.c['数量']) || 1, unit: r.c['单位'] || '件' };
       }).sort(byDateAsc);
     },
     rc: function (s, rows) {
