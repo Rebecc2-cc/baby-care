@@ -766,8 +766,7 @@ const TALK=[
    0-12月：节奏/动作/指着念的 ｜ 12-24月：词汇/短文/单词 ｜ 24月+：句子/口语对话 */
 const SSS_AGE=[0,0,12,0,12,12,12,12,0,0,12,0,0,12,24,12,12,24,18,12];
 const ENSTORY_AGE=[12,12,0,12,0,12,12,18,12,12];
-const ABC_AGE=[];
-for(let __i=0;__i<26;__i++)ABC_AGE.push(0);
+const ABC_AGE=[0,0,0,0,0,0,0,0,0,0,12,0,0,0,0,0,24,0,0,0,12,12,0,24,24,18];
 const WORDS_AGE=[0,12,12,12,0,0,12,12];
 const TALK_AGE=[24,24,24,24,12,24,12,24];
 /* 当月龄适合的英文条目数；enIdx 返回匹配的随机序号（无匹配则退回全库） */
@@ -853,8 +852,11 @@ function age(){
   const now=new Date();let mo=(now.getFullYear()-y)*12+(now.getMonth()+1-m);
   if(now.getDate()<d)mo--;
   if(mo<0)mo=0;
+  const ann=new Date(y,m-1+mo,d);
+  let dd=Math.floor((now-ann)/86400000);if(dd<0)dd=0;if(dd>31)dd=31;
   const yy=Math.floor(mo/12),mm=mo%12;
-  return yy>0?`${yy}岁${mm}个月`:`${mm}个月`;
+  const base=yy>0?`${yy}岁${mm}个月`:`${mm}个月`;
+  return dd?`${base}+${dd}天`:`${base}`;
 }
 function ageYears(){if(!S.birth)return 0;const [y,m,d]=S.birth.split('-').map(Number);const now=new Date();let yy=now.getFullYear()-y;if(now.getMonth()+1<m||(now.getMonth()+1===m&&now.getDate()<d))yy--;return Math.max(0,yy);}
   function ageMonths(){ /* 返回真实月龄（向上取整到月），用于按月龄适配 */
@@ -894,12 +896,26 @@ function todayGameFor(ds){ /* 按具体日期回当月龄内的游戏（打卡�
   return g[((dayIdx(ds)%g.length)+g.length)%g.length];
 }
 /* 故事年龄标签解析："2岁+"→24个月；返回本月龄可看的 STORIES 索引集 */
-function storyMinMonth(st){const m=(st[1]||'').match(/(\d+)\s*岁/);return m?((+m[1])*12):0;}
+function storyMinMonth(st){const t=st[1]||'';let m=t.match(/(\d+)\s*岁/);if(m)return (+m[1])*12;m=t.match(/(\d+)\s*月/);if(m)return +m[1];return 0;}
 function storyAgeIdxArr(){
   if(!S.birth)return null;
   const cap=gameAgeCap(),idx=[];
   for(let i=0;i<STORIES.length;i++){if(storyMinMonth(STORIES[i])<=cap)idx.push(i);}
   return idx.length?idx:null;
+}
+/* 优先挑“年龄贴近当前月龄(±6个月)”的故事；没有就退回全部可看，再退回全库 */
+function storyCloseIdxArr(){
+  const cap=gameAgeCap(),lo=Math.max(0,cap-6),idx=[];
+  for(let i=0;i<STORIES.length;i++){const mm=storyMinMonth(STORIES[i]);if(mm<=cap&&mm>=lo)idx.push(i);}
+  if(idx.length)return idx;
+  return storyAgeIdxArr()||STORIES.map((_,i)=>i);
+}
+/* 游戏同理：优先贴近当前月龄的游戏 */
+function gameCloseIdxArr(){
+  const cap=gameAgeCap(),lo=Math.max(0,cap-6),idx=[];
+  for(let i=0;i<GAMES.length;i++){const a=gAge(i);if(a<=cap&&a>=lo)idx.push(i);}
+  if(idx.length)return idx;
+  return gameGroupIcons();
 }
 /* 按月龄给出发育/喂养小贴士卡片：按月龄自动切换，家长可在设置里手动覆盖档位 */
 const AGE_TIPS=[
@@ -975,7 +991,7 @@ function rArch(){
   const g=type=>S.growth.filter(x=>x.type===type).sort((a,b)=>a.date.localeCompare(b.date));
   return `<div class="sec">
     <h2>${I.health}宝宝档案</h2>
-    <p class="sub">上传宝贝照片、记录成长、点亮技能奖状，都在这里</p>
+    <p class="sub">记录成长数据、点亮技能五角星，都在这里</p>
     ${ageTip()}
     <div class="plane">
       <div style="flex:1;min-width:260px;">
@@ -992,7 +1008,6 @@ function rArch(){
       <div>${lineChart(g('head'),'头围 (cm)','#9B7BE8')}</div>
     </div>
   </div>
-  ${photoWall()}
   <div class="sec">
     <h2>${I.trophy}技能五角星 · 奖状墙</h2>
     <p class="sub">点亮一个技能，五角星就上奖状墙并记录完成日期；点亮的可再点取消</p>
@@ -1556,7 +1571,24 @@ const STORIES=[
 ['会飞的小伞','2岁+','探索','蒲公英撑着小伞去冒险。'],
 ['图书馆里的怪兽','3岁+','阅读','可怕的怪兽，爱上了看书。'],
 ['我的情绪小怪兽','3岁+','情绪','把情绪分颜色，就不乱了。'],
-['谢谢你，小雪花','3岁+','感恩','冷冷冬天里，也有小温暖。']
+['谢谢你，小雪花','3岁+','感恩','冷冷冬天里，也有小温暖。'],
+/* ── 新增：1岁以内/低龄宝宝的简短故事（按“月”标注，月龄匹配用） ── */
+['宝宝的微笑','0月+','感官','轻柔抚摸、柔声说话，宝宝第一次对你露出微笑。'],
+['抱抱与摇摇','0月+','亲密','多抱抱、多摇摇，宝宝在怀里听着心跳安稳入睡。'],
+['看小脸笑','3月+','亲子','把脸凑近，眨眨眼、吐吐舌，逗宝宝咯咯笑。'],
+['黑白小卡片','3月+','追视','拿黑白卡左右慢慢移动，宝宝的目光跟着追。'],
+['拍手拍拍','6月+','节奏','你拍一我拍一，坐着拍拍手跺跺脚，跟着节拍玩。'],
+['小球滚来了','6月+','追视','软软的小球滚到面前，宝宝伸手去够、去抓。'],
+['玩躲猫猫','6月+','社交','用手遮住脸再打开，和宝宝玩躲猫猫笑不停。'],
+['我的小脚丫','9月+','身体','摸摸小脚、点点脚趾，一起认识自己的身体。'],
+['学爬的小勇士','9月+','运动','扶着宝宝一步一步往前爬，勇敢去探索。'],
+['小熊和摇篮','12月+','睡前','小熊宝宝在摇摇的摇篮里，月亮温柔照进来。'],
+['和爸爸滚球','12月+','亲子','你推过去、爸爸推回来，一起把球滚个来回。'],
+['泡澡吹泡泡','15月+','洗澡','满池的泡泡飘呀飘，小宝宝伸手轻轻拍。'],
+['找小狗','15月+','找一找','“小狗在哪里？”指一指、认一认，宝宝找得到。'],
+['小脚穿袜子','18月+','自理','小脚丫伸进袜子里，一只、两只都穿好。'],
+['看小鸟飞','18月+','观察','透过窗看小鸟扑腾飞，宝宝也挥挥小手臂。'],
+['睡前说晚安','24月+','习惯','跟玩具一个个说晚安，钻进被子甜甜睡。']
 ];
 /* ================= 学习 ================= */
 let LEARN_TAB='game';
@@ -1575,22 +1607,20 @@ function learnLibBtn(label,page){
 }
 function todayLearn(){
   const di=dayIdx(today());
-  // 今日游戏
-  const gs=gameGroupIcons();const gid=gs?gs[di%gs.length]:di%GAMES.length;
+  // 今日游戏：贴近当前月龄
+  const gsc=gameCloseIdxArr();const gid=gsc?(gsc[di%gsc.length]):di%GAMES.length;
   const g=gameById(gid);
   const isDone=S.gamesDone.some(x=>x.date===today()&&x.gid===gid);
-  // 今日故事
-  const sa=storyAgeIdxArr();const storyArr=sa||STORIES.map((_,i)=>i);
-  const si=storyArr[(di+storyOff)%storyArr.length];curStoryIdx=si;
+  // 今日故事：贴近当前月龄
+  const scp=storyCloseIdxArr();const si=scp[(di+storyOff)%scp.length];curStoryIdx=si;
   const st=STORIES[si];
-  // 今日英文：5 类每日轮换
-  const enKinds=[['sss','🎵 磨耳朵儿歌',SSS_AGE],['story','📖 英文小故事',ENSTORY_AGE],['abc','🔤 认识一个字母',ABC_AGE],['words','📚 学一个单词',WORDS_AGE],['talk','💬 一句生活口语',TALK_AGE]];
-  // 优先选当天该轮到、且符合本月龄的类型；该类型无适配内容则顺延到下一类
-  let ekind=null,elabel='',ea=null;
-  const startK=di%5;
-  for(let k=0;k<5;k++){const i=(startK+k)%5;if(enPoolAge(enKinds[i][2])>0){ekind=enKinds[i][0];elabel=enKinds[i][1];ea=enKinds[i][2];break;}}
-  if(!ekind){ekind=enKinds[startK][0];elabel=enKinds[startK][1];ea=enKinds[startK][2];}
-  const enHtml=todayEnOne(ekind,di,ea);
+  // 今日英文：一个“字母 + 相关单词”组合，按月龄过滤
+  const ai=enIdx(ABC_AGE,di);
+  const [L,W,C,em]=ABC[ai];
+  const line=L+'. '+L+' is for '+W+'. '+W;
+  const enHtml=`<div class="abcLine"><b style="font-size:38px;margin-right:10px;color:var(--pri-d);">${L}</b><span style="font-size:20px;font-weight:700;">${em} ${W}</span><div class="muted" style="font-size:14px;margin-top:6px;">${C}</div></div>
+    <div class="row" style="margin-top:10px;"><button class="btn p sm" data-spk="${esc(line)}">🔊 读：${L} is for ${W}</button></div>`;
+  const elabel='🔤 一个字母 + 单词';
   return `<div class="learnGrid">
     ${todayGameCard(g,gid,isDone)}
     ${todayStoryCard(st)}
@@ -1718,14 +1748,76 @@ function billMoney(b){return (+b.price)||0;} // 价格为总价，统计直接�
 function billUnitPrice(b){const q=(+b.qty)||1;return billMoney(b)/q;} // 单价 = 总价 ÷ 数量
 function fmtMoney(n){return (Math.round(n*100)/100).toLocaleString('zh-CN');}
 function shopPeriodLabel(){return shopView.mode==='month'?`${shopView.y}年${shopView.m}月`:`${shopView.y}年`;}
+/* ── 「+记一笔」智能识别：输入一句“买了什么”自动填名称/分类/总价/数量/单位 ── */
+const BILL_UNITS='包|罐|瓶|件|箱|盒|双|个|袋|支|条|套|组|斤|千克|公斤|筒|捆|片';
+const BILL_CAT_KEYS=[
+  ['尿不湿',['纸尿裤','尿不湿','尿布','拉拉裤','尿裤','裤型']],
+  ['医疗',['药','维生素','钙片','D3','退烧','益生菌','蒙脱石','口罩','棉签','体温计','疫苗','雾化','创可贴','纱布']],
+  ['辅食',['米粉','面条','粥','肉泥','菜泥','鱼泥','鳕鱼','碎面','粒粒面','果泥','辅食油']],
+  ['零食',['饼干','磨牙棒','溶豆','泡芙','米饼','虾条','山楂','薯片','酸奶','奶酪棒']],
+  ['奶粉',['奶粉','配方奶','一段','二段','三段','羊奶粉']],
+  ['衣物',['衣服','上衣','裤子','袜子','裙子','T恤','卫衣','外套','睡衣','打底','套装','连体衣']],
+  ['鞋',['鞋','凉鞋','运动鞋','帆布鞋','靴','拖鞋','学步鞋','机能鞋']],
+  ['玩具',['玩具','积木','小车','汽车','娃娃','玩偶','绘本','书','拼图','球','乐高','摇铃']]
+];
+function detectBillCat(txt){
+  for(let i=0;i<BILL_CAT_KEYS.length;i++){const c=BILL_CAT_KEYS[i][0],ks=BILL_CAT_KEYS[i][1];for(const k of ks){if(txt.indexOf(k)>=0)return c;}}
+  return '';
+}
+function parsePrice(txt,qty){
+  let m=txt.match(/[¥￥]\s*(\d+(?:\.\d+)?)/);if(m)return +m[1];
+  m=txt.match(/(\d+(?:\.\d+)?)\s*(?:块钱|块|元)/);if(m)return +m[1];
+  // 无“元/块”时：取剩下的独立数字里最大者当价格（避开数量那个数）
+  const ms=(txt.match(/\d+(?:\.\d+)?/g)||[]);let best=null;
+  for(const x of ms){const v=+x;if(qty!==null&&v===qty)continue;if(best===null||v>best)best=v;}
+  return best;
+}
+function cnN(s){const m1={一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};
+  if(!s)return null;if(s==='十')return 10;if(s.startsWith('十'))return 10+(m1[s[1]]||0);
+  const t=s.indexOf('十');if(t>=0)return (m1[s[t-1]]||1)*10+(t+1<s.length?(m1[s[t+1]]||0):0);
+  return m1[s]||null;}
+function parseQtyUnit(txt){
+  let m=txt.match(new RegExp('(\\d+)\\s*('+BILL_UNITS+')'));
+  if(m)return {qty:+m[1],unit:m[2]};
+  m=txt.match(new RegExp('([一二两三四五六七八九十]+)\\s*('+BILL_UNITS+')'));
+  if(m){const q=cnN(m[1]);if(q)return {qty:q,unit:m[2]};}
+  return {qty:null,unit:''};
+}
+function parseBillName(txt){
+  let s=txt||'';
+  s=s.replace(/[¥￥]\s*\d+(\.\d+)?/g,' ');
+  s=s.replace(/\d+(\.\d+)?\s*(?:块钱|块|元)/g,' ');
+  s=s.replace(new RegExp('(?:\\d+|[一二两三四五六七八九十]+)\\s*(?:'+BILL_UNITS+')','g'),' ');
+  s=s.replace(/花了|一共|总共|买了|给我|给宝宝|给宝宝买|买|价格|大概|的|是|，|。|,|\./g,' ');
+  s=s.replace(/\s+/g,' ').trim();
+  return s;
+}
+function parseBill(txt){
+  const s=(txt||'').trim();
+  const p=parseQtyUnit(s);
+  return {cat:detectBillCat(s),name:parseBillName(s),price:parsePrice(s,p.qty),qty:p.qty,unit:p.unit};
+}
+/* ── 月/年账单分类页面：水平柱状图，消费最高在前 ── */
+function shopBars(list){
+  const catSum={};list.forEach(b=>{const c=billCat(b);catSum[c]=(catSum[c]||0)+billMoney(b);});
+  const rows=BILL_CATS.filter(c=>catSum[c]).map(c=>({c,n:list.filter(b=>billCat(b)===c).length,v:catSum[c]})).sort((a,b)=>b.v-a.v);
+  if(!rows.length)return '';
+  const max=rows[0].v||1;
+  return `<div class="sec" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 14px 6px;margin-bottom:14px;">
+    <div class="tt" style="color:#5A4A5A;">📊 ${shopView.mode==='month'?'本月':'本年'}分类花销 <span class="muted" style="font-size:12px;font-weight:600;color:#B9A8C4;">（消费最多在上面）</span></div>
+    ${rows.map(r=>{
+      const w=Math.max(4,Math.round(r.v/max*100)),col=CAT_COLOR[r.c]||'#c9a4d8';
+      return `<div style="display:flex;align-items:center;gap:9px;margin:7px 0;">
+        <span style="flex:none;min-width:40px;text-align:center;padding:3px 8px;border-radius:8px;background:${col};font-weight:700;font-size:13px;color:#5A3A3A;">${r.c}</span>
+        <div style="flex:1;height:20px;background:#F3EFF5;border-radius:6px;overflow:hidden;"><div style="width:${w}%;height:100%;background:linear-gradient(90deg,${col},${col});opacity:.85;border-radius:6px;"></div></div>
+        <b style="flex:none;min-width:76px;text-align:right;font-size:14px;color:#6B4A6B;">¥${fmtMoney(r.v)}<span class="muted" style="display:block;font-size:11px;color:#B9A8C4;">${r.n}笔</span></b>
+      </div>`;}).join('')}
+  </div>`;
+}
 function rShop(){
   const list=billsSorted().filter(billInView);
   const total=list.reduce((s,b)=>s+billMoney(b),0);
-  const catSum={};list.forEach(b=>{const c=billCat(b);catSum[c]=(catSum[c]||0)+billMoney(b);});
-  const catRows=BILL_CATS.filter(c=>catSum[c]).map(c=>{
-    const n=list.filter(b=>billCat(b)===c).length;
-    return `<div class="billcat"><span class="cn" style="background:${CAT_COLOR[c]||'#eee'}">${c}</span><span class="cnt">${n}笔</span><b class="amt">¥${fmtMoney(catSum[c])}</b></div>`;
-  }).join('');
+  const barsHtml=shopBars(list);
   return `<div class="sec">
     <h2>${I.sup}购物 · 宝宝物品账单</h2>
     <p class="sub">记下总价、数量和单位，自动标注单价并按总价汇总月度 / 年度花费</p>
@@ -1742,7 +1834,7 @@ function rShop(){
     <b style="min-width:96px;text-align:center;font-size:16px;">${shopPeriodLabel()}</b>
     <button class="tbtn" data-smnav="1">下${shopView.mode==='month'?'月':'年'} ›</button>
   </div>
-  ${catRows?`<div class="catwrap">${catRows}</div>`:`<div class="catEmpty ${list.length?'hasrows':''}">${list.length?'这个时段还没有账单':'还没有账单，点「＋ 记一笔」开始记第一笔吧'}</div>`}
+  ${barsHtml?barsHtml:`<div class="catEmpty ${list.length?'hasrows':''}">${list.length?'这个时段还没有账单':'还没有账单，点「＋ 记一笔」开始记第一笔吧'}</div>`}
   <div id="billList">${billList(list)}</div>`;
 }
 function billList(list){
@@ -2373,6 +2465,10 @@ function addCustomAllergy(){
 function openBill(id){
   const b=id?S.supplies.find(x=>x.id===id):null;
   showSheet(b?`✏️ 编辑账单`:`＋ 记一笔`,`
+    <div class="row" style="gap:8px;align-items:stretch;">
+      <button id="billMic" class="btn p sm" style="flex:none;font-size:22px;width:56px;padding:8px 0;" title="语音记账">🎤</button>
+      <input id="billSmart" placeholder="用键盘打，或点左边🎤直接说：如“2包大号纸尿裤 89.5元”" style="flex:1;background:#FFFDF5;border:1.5px dashed #C39BD3;font-size:17px;">
+    </div>
     <label class="fld">名称</label><input id="bName" value="${esc(b? b.name:'')}" placeholder="如：纸尿裤 L码">
     <label class="fld">分类</label>
     <div class="seg">${BILL_CATS.map(c=>`<button data-bc="${c}" class="${(b?b.cat:c)==='奶粉'?'on':''}">${c}</button>`).join('')}</div>
@@ -2384,6 +2480,28 @@ function openBill(id){
     </div>
     <div class="row" style="margin-top:14px;"><button class="btn p block" id="saveBill">保存</button></div>`);
   let cat=b?b.cat:'奶粉';
+  const sm=document.getElementById('billSmart');
+  function applyBillSmart(txt){
+    const r=parseBill(txt);
+    if(r.name)document.getElementById('bName').value=r.name.length>0?r.name:document.getElementById('bName').value;
+    const pr=document.getElementById('bPrice'),qy=document.getElementById('bQty'),un=document.getElementById('bUnit');
+    if(r.price!=null&&pr)pr.value=r.price;
+    if(r.qty!=null&&qy)qy.value=r.qty;
+    if(r.unit&&un)un.value=r.unit;
+    if(r.cat){cat=r.cat;document.querySelectorAll('#mask [data-bc]').forEach(x=>x.classList.toggle('on',x.dataset.bc===r.cat));}
+  }
+  if(sm)sm.oninput=()=>applyBillSmart(sm.value);
+  const mic=document.getElementById('billMic');
+  if(mic)mic.onclick=function(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){toast('当前浏览器不支持语音，请用文字输入');return;}
+    const rec=new SR();rec.lang='zh-CN';rec.interimResults=false;rec.maxAlternatives=1;
+    this.textContent='⏺';this.style.background='#FF8A9B';this.disabled=true;
+    rec.onresult=e=>{const t=(e.results[0][0].transcript||'').trim();this.textContent='🎤';this.style.background='';this.disabled=false;if(sm)sm.value=t;applyBillSmart(t);};
+    rec.onerror=()=>{this.textContent='🎤';this.style.background='';this.disabled=false;toast('没听清，再说一遍试试');};
+    rec.onend=()=>{this.textContent='🎤';this.style.background='';this.disabled=false;};
+    try{rec.start();}catch(_){this.textContent='🎤';this.style.background='';this.disabled=false;}
+  };
   document.querySelectorAll('#mask [data-bc]').forEach(x=>x.onclick=()=>{
     document.querySelectorAll('#mask [data-bc]').forEach(y=>y.classList.remove('on'));x.classList.add('on');cat=x.dataset.bc;
   });
