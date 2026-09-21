@@ -24,6 +24,7 @@
   .tbtn{min-height:40px;padding:0 11px;border:none;border-radius:11px;background:#fff;border:1px solid var(--line);font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--text);}
   .tbtn svg{width:16px;height:16px;}
   .tbtn.warn{color:#E5484D;}
+  .learnHead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .layout{display:flex;min-height:calc(100vh - 58px);overflow-x:hidden;}
   .side{width:232px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:12px 10px;}
   .side .nav{display:flex;flex-direction:column;gap:4px;position:sticky;top:70px;}
@@ -761,6 +762,22 @@ const TALK=[
 {s:'鼓励',e:'💕',c:'#FFEDF4',p:[['I love you!','我爱你！'],['You did it!','你做到啦！'],['Great job!','太棒了！'],['Give me a hug!','抱抱我！']]},
 {s:'如厕',e:'🚽',c:'#FFF6E0',p:[['Do you need to pee?','要嘘嘘吗？'],['Let\'s go potty.','去坐小马桶吧。'],['Good job!','好棒！']]}
 ];
+/* ── 英文内容月龄档：与各数组一一对应的【建议起始月龄】，按月龄粗分 3 档
+   0-12月：节奏/动作/指着念的 ｜ 12-24月：词汇/短文/单词 ｜ 24月+：句子/口语对话 */
+const SSS_AGE=[0,0,12,0,12,12,12,12,0,0,12,0,0,12,24,12,12,24,18,12];
+const ENSTORY_AGE=[12,12,0,12,0,12,12,18,12,12];
+const ABC_AGE=[];
+for(let __i=0;__i<26;__i++)ABC_AGE.push(0);
+const WORDS_AGE=[0,12,12,12,0,0,12,12];
+const TALK_AGE=[24,24,24,24,12,24,12,24];
+/* 当月龄适合的英文条目数；enIdx 返回匹配的随机序号（无匹配则退回全库） */
+function enPoolAge(ageArr){const cap=gameAgeCap();let n=0;for(let i=0;i<ageArr.length;i++){if((ageArr[i]||0)<=cap)n++;}return n;}
+function enIdx(ageArr,di){
+  const cap=gameAgeCap(),pool=[];
+  for(let i=0;i<ageArr.length;i++){if((ageArr[i]||0)<=cap)pool.push(i);}
+  const p=pool.length?pool:ageArr.map((_,i)=>i);
+  return p[((di%p.length)+p.length)%p.length];
+}
 const TIPS=[
 ['在外面被别的宝宝推倒了',['先蹲下安抚情绪，不要急着问"怎么回事"或批评',"示范替孩子说出来：「他推你，你很委屈是不是？」",'教孩子下次大声说「不要推我」，并告诉大人','回家后角色扮演练习，把勇气练出来']],
 ['想玩别人的玩具被拒绝大哭',['共情：「你想要那个小车，不给你很难过」','教轮流：「我们等一等，或者拿玩具去换」','示范请求：「弟弟，可以给我玩一下吗」','转移注意力，准备好备选玩具']],
@@ -918,11 +935,8 @@ function renderNav(){
 function render(){
   renderNav();
   const b=[];
-  const pend=pendingGames();
-  const cap=gameAgeCap();
   const auto=!S.ageCap||S.ageCap===0;
   if(S.birth)b.push(`<div class="banner" style="background:#FFEDF5;color:#A63A68;">🌸 当前按 「${age()}+」${auto?'自动':'手动档位'} 推荐游戏与故事，去「档案-本月龄建议」可调整 ></div>`);
-  if(pend.some(p=>p.overdue))b.push(`<div class="banner">⏰ 有未完成的早教游戏顺延到了今天，去「学习-游戏」看看吧</div>`);
   const main=document.getElementById('main');
   let body;
   try{ body=b.join('')+pageFn[page](); }
@@ -1570,14 +1584,14 @@ function todayLearn(){
   const si=storyArr[(di+storyOff)%storyArr.length];curStoryIdx=si;
   const st=STORIES[si];
   // 今日英文：5 类每日轮换
-  const enKinds=[['sss','🎵 磨耳朵儿歌'],['story','📖 英文小故事'],['abc','🔤 认识一个字母'],['words','📚 学一个单词'],['talk','💬 一句生活口语']];
-  const [ekind,elabel]=enKinds[di%5];
-  const enHtml=todayEnOne(ekind,di);
-  return `<div class="sec">
-    <h2>📚 今日学习</h2>
-    <p class="sub">每天就安排这 3 样，轻松完成；明天自动换新内容</p>
-  </div>
-  <div class="learnGrid">
+  const enKinds=[['sss','🎵 磨耳朵儿歌',SSS_AGE],['story','📖 英文小故事',ENSTORY_AGE],['abc','🔤 认识一个字母',ABC_AGE],['words','📚 学一个单词',WORDS_AGE],['talk','💬 一句生活口语',TALK_AGE]];
+  // 优先选当天该轮到、且符合本月龄的类型；该类型无适配内容则顺延到下一类
+  let ekind=null,elabel='',ea=null;
+  const startK=di%5;
+  for(let k=0;k<5;k++){const i=(startK+k)%5;if(enPoolAge(enKinds[i][2])>0){ekind=enKinds[i][0];elabel=enKinds[i][1];ea=enKinds[i][2];break;}}
+  if(!ekind){ekind=enKinds[startK][0];elabel=enKinds[startK][1];ea=enKinds[startK][2];}
+  const enHtml=todayEnOne(ekind,di,ea);
+  return `<div class="learnGrid">
     ${todayGameCard(g,gid,isDone)}
     ${todayStoryCard(st)}
     ${todayEnCard(elabel,enHtml)}
@@ -1610,23 +1624,23 @@ function todayEnCard(elabel,enHtml){
     <div style="margin-top:6px;">${enHtml}</div>
   </div>`;
 }
-function todayEnOne(kind,di){
-  if(kind==='sss'){const [n,tp,p,em,lyr]=SSS[di%SSS.length];
+function todayEnOne(kind,di,ea){
+  if(kind==='sss'){const [n,tp,p,em,lyr]=SSS[enIdx(ea,di)];
     return `<div class="nt" style="font-size:17px;font-weight:800;">${esc(n)} <span class="tp" style="font-size:13px;">${esc(tp)}</span></div>
       <div class="nt">💡 ${esc(p)}</div>
       <div class="nt" style="font-size:14px;">🎵 ${esc(lyr)}</div>
       <div class="row" style="margin-top:8px;gap:8px;"><button class="btn p sm" data-spk="${esc(lyr)}">🔊 听儿歌</button><span class="muted" style="font-size:12px;">每天一首，反复磨耳朵</span></div>`;}
-  if(kind==='story'){const s=EN_STORIES[di%EN_STORIES.length];const lines=s.en.slice(0,2);
+  if(kind==='story'){const s=EN_STORIES[enIdx(ea,di)];const lines=s.en.slice(0,2);
     return `<div class="nt" style="font-size:17px;font-weight:800;">📖 ${esc(s.t)}</div>
       ${lines.map((l,k)=>`<div class="nt" style="margin:4px 0;"><button class="spk" style="border:none;background:none;cursor:pointer;font-size:13px;color:var(--pri-d);" data-spk="${esc(l)}">🔊</button> ${esc(l)}<div class="muted" style="font-size:12px;margin-left:22px;">${esc(s.zh[k])}</div></div>`).join('')}
       <div class="row" style="margin-top:8px;">想读更多，点右上角「浏览全部英文」</div>`;}
-  if(kind==='abc'){const [L,W,C,em]=ABC[di%ABC.length];const line=L+'. '+L+' is for '+W+'. '+W;
+  if(kind==='abc'){const [L,W,C,em]=ABC[enIdx(ea,di)];const line=L+'. '+L+' is for '+W+'. '+W;
     return `<div class="abcLine"><b style="font-size:34px;margin-right:8px;">${L}</b><span style="font-size:18px;">${em} · ${W}</span><div class="muted" style="font-size:13px;">${C}</div></div>
       <div class="row" style="margin-top:8px;"><button class="btn p sm" data-spk="${esc(line)}">🔊 读：A is for Apple</button></div>`;}
-  if(kind==='words'){const t=WORDS[di%WORDS.length];const [en,zh,em]=t.w[di%t.w.length];
+  if(kind==='words'){const t=WORDS[enIdx(ea,di)];const [en,zh,em]=t.w[di%t.w.length];
     return `<div class="wordLine" style="display:flex;align-items:center;gap:8px;font-size:20px;"><span>${em}</span><b>${esc(en)}</b><span class="muted" style="font-size:14px;color:#888;">${esc(zh)}</span></div>
       <div class="row" style="margin-top:8px;"><button class="btn p sm" data-spk="${esc(en)}">🔊 读这个词</button></div>`;}
-  const t=TALK[di%TALK.length];const [en,zh]=t.p[di%t.p.length];
+  const t=TALK[enIdx(ea,di)];const [en,zh]=t.p[di%t.p.length];
   return `<div class="talkLine"><b style="font-size:19px;">${esc(en)}</b><div class="muted" style="color:#888;">${esc(zh)}</div></div>
     <div class="row" style="margin-top:8px;"><button class="btn p sm" data-spk="${esc(en)}">🔊 跟读</button></div>`;
 }
