@@ -1708,8 +1708,8 @@ function actList(fc,q){
   }).join('');
 }
 /* ================= 购物 · 宝宝物品账单 ================= */
-const BILL_CATS=['奶粉','尿不湿','衣物','玩具','辅食','医疗','其他'];
-const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','衣物':'#FFEBDD','玩具':'#E5EBFF','辅食':'#FFF3D1','医疗':'#E8E5FA','其他':'#EDEDED'};
+const BILL_CATS=['奶粉','尿不湿','衣物','玩具','辅食','零食','医疗','鞋','其他'];
+const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','衣物':'#FFEBDD','玩具':'#E5EBFF','辅食':'#FFF3D1','零食':'#FFF6D8','医疗':'#E8E5FA','鞋':'#E0F2F1','其他':'#EDEDED'};
 let shopView={mode:'month',y:new Date().getFullYear(),m:new Date().getMonth()+1};
 function billsSorted(){return S.supplies.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));}
 function billInView(b){const d=b.date||'';const y=shopView.y,mm=(shopView.m<10?'0':'')+shopView.m;return shopView.mode==='year'?d.slice(0,4)===String(y):d.slice(0,7)===`${y}-${mm}`;}
