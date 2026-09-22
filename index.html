@@ -1306,16 +1306,27 @@ function localSpeak(txt,onfail){
     // 先生成 utterance，再选声音，MAC/安卓/微信里都能发声
     ss.cancel();
     const u=new SpeechSynthesisUtterance(txt);
-    u.lang='en-US';
+    // 自动识别语言：含中文且几乎无英文单词 → 用中文语音；否则用英文语音
+    const isCn=/[\u4e00-\u9fff]/.test(txt)&&!/[A-Za-z]{3,}/.test(txt);
+    u.lang=isCn?'zh-CN':'en-US';
     u.rate=.84;              // 稍慢，读给小孩更从容
     u.pitch=1.08;            // 略高一点，接近温和的童感（不宜过高以免发飘）
     const vs=ss.getVoices();
-    // 优先挑手机/系统里听感自然的英文女声，其次任何英文音，最后随便一个
-    const prefer=['Samantha','Karen','Allison','Aria','Ava','Zira','Jenny','Zoe','Google US English'];
-    let v=vs.find(x=>{const l=(x.lang||'').toLowerCase().replace('_','-');return l.indexOf('en-us')>=0&&prefer.some(n=>x.name.toLowerCase().indexOf(n.toLowerCase())>=0);})
-       ||vs.find(x=>{const l=(x.lang||'').toLowerCase().replace('_','-');return l.indexOf('en')===0;})
-       ||vs[0];
-    if(v)u.voice=v;
+    if(isCn){
+      // 中文：优先自然中文女声，其次任意中文音，最后随便一个
+      const cnv=['Xiaoxiao','Xiaoyi','Xiaohan','Xiaomo','Huihui','Yaoyao','Tingting','Meijia','Google 普通话','Google 國語','Lili','Tian-Tian','Sinji'];
+      let v=vs.find(x=>{const l=(x.lang||'').toLowerCase().replace('_','-');return l.indexOf('zh')===0&&cnv.some(n=>x.name.indexOf(n)>=0);})
+        ||vs.find(x=>{const l=(x.lang||'').toLowerCase().replace('_','-');return l.indexOf('zh')===0;})
+        ||vs[0];
+      if(v)u.voice=v;
+    }else{
+      // 英文：优先听感自然的英文女声，其次任何英文音，最后随便一个
+      const prefer=['Samantha','Karen','Allison','Aria','Ava','Zira','Jenny','Zoe','Google US English'];
+      let v=vs.find(x=>{const l=(x.lang||'').toLowerCase().replace('_','-');return l.indexOf('en-us')>=0&&prefer.some(n=>x.name.toLowerCase().indexOf(n.toLowerCase())>=0);})
+        ||vs.find(x=>{const l=(x.lang||'').toLowerCase().replace('_','-');return l.indexOf('en')===0;})
+        ||vs[0];
+      if(v)u.voice=v;
+    }
     let d=false;
     let g=setInterval(function(){if(!ss.speaking&&!ss.pending){clearInterval(g);return;}ss.pause();ss.resume();},3000);
     u.onend=function(){if(!d){d=true;clearInterval(g);}};
