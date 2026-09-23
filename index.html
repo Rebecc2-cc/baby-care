@@ -1756,7 +1756,7 @@ function billsSorted(){return S.supplies.slice().sort((a,b)=>(b.date||'').locale
 function billInView(b){const d=b.date||'';const y=shopView.y,mm=(shopView.m<10?'0':'')+shopView.m;return shopView.mode==='year'?d.slice(0,4)===String(y):d.slice(0,7)===`${y}-${mm}`;}
 function billCat(b){return BILL_CATS.indexOf(b.cat)>=0?b.cat:'其他';}
 function billMoney(b){return (+b.price)||0;} // 价格为总价，统计直接用，不再乘数量
-function billUnitPrice(b){const q=(+b.qty)||1;return billMoney(b)/q;} // 单价 = 总价 ÷ 数量
+function billUnitPrice(b){const q=(+b.qty);if(!q)return null;return billMoney(b)/q;} // 单价 = 总价 ÷ 数量；未填数量则不算单价
 function fmtMoney(n){return (Math.round(n*100)/100).toLocaleString('zh-CN');}
 function shopPeriodLabel(){return shopView.mode==='month'?`${shopView.y}年${shopView.m}月`:`${shopView.y}年`;}
 /* ── 「+记一笔」智能识别：输入一句“买了什么”自动填名称/分类/总价/数量/单位 ── */
@@ -1831,7 +1831,7 @@ function rShop(){
   const barsHtml=shopBars(list);
   return `<div class="sec">
     <h2>${I.sup}购物 · 宝宝物品账单</h2>
-    <p class="sub">记下总价、数量和单位，自动标注单价并按总价汇总月度 / 年度花费</p>
+    <p class="sub">记下总价即可（数量、单位选填）；按总价汇总月度 / 年度花费，填了数量才标单价</p>
     <button class="btn p" id="addBill">＋ 记一笔</button>
   </div>
   <div class="grid c2" style="margin:14px 0;">
@@ -1850,10 +1850,10 @@ function rShop(){
 }
 function billList(list){
   if(!list.length)return `<div class="empty">${(S.supplies||[]).length?'这个时段没有记录':'还没有账单，点「＋ 记一笔」添加第一笔'}</div>`;
-  return `<div class="grid c2">${list.map(b=>{const c=billCat(b);const up=billUnitPrice(b);return `<div class="item">
+  return `<div class="grid c2">${list.map(b=>{const c=billCat(b);const hasQ=!!b.qty;const up=hasQ?billUnitPrice(b):null;return `<div class="item">
       <div class="top"><span class="nm">${esc(b.name)}</span><span class="cn" style="background:${CAT_COLOR[c]||'#eee'}">${c}</span></div>
-      <div class="nt">${esc(b.date)} · ${b.qty||1}${esc(b.unit||'件')}</div>
-      <div class="row" style="margin-top:8px;"><div style="display:flex;flex-direction:column;"><b class="amt" style="font-size:20px;color:var(--pri-d);line-height:1.1;">¥${fmtMoney(billMoney(b))}</b><span class="muted" style="font-size:12px;color:#999;">单价 ≈ ¥${fmtMoney(up)} / ${esc(b.unit||'件')}</span></div><span style="flex:1"></span>
+      <div class="nt">${esc(b.date)}${hasQ?` · ${esc(b.qty)}${esc(b.unit||'件')}`:''}</div>
+      <div class="row" style="margin-top:8px;"><div style="display:flex;flex-direction:column;"><b class="amt" style="font-size:20px;color:var(--pri-d);line-height:1.1;">¥${fmtMoney(billMoney(b))}</b>${up!=null?`<span class="muted" style="font-size:12px;color:#999;">单价 ≈ ¥${fmtMoney(up)} / ${esc(b.unit||'件')}</span>`:''}</div><span style="flex:1"></span>
         <button class="btn g sm" data-ebill="${b.id}">${I.edit}改</button>
         <button class="btn g sm warn" data-dbill="${b.id}">${I.trash}</button></div>
     </div>`;}).join('')}</div>
@@ -2486,8 +2486,8 @@ function openBill(id){
     <div class="grid c2">
       <div><label class="fld">购买日期</label><input type="date" id="bDate" value="${esc(b? b.date:today())}"></div>
       <div><label class="fld">总价 (元)</label><input type="number" id="bPrice" value="${b?b.price:''}" step="0.01" placeholder="填总价，如 89.5"></div>
-      <div><label class="fld">数量</label><input type="number" id="bQty" value="${b?b.qty:''}" placeholder="如 2" step="1" min="1"></div>
-      <div><label class="fld">单位</label><input id="bUnit" value="${esc(b? b.unit||'':'')}" placeholder="包 / 罐 / 瓶…"></div>
+      <div><label class="fld">数量 <span style="color:#B59BBF;font-size:12px;">(选填)</span></label><input type="number" id="bQty" value="${b?b.qty:''}" placeholder="如 2" step="1" min="1"></div>
+      <div><label class="fld">单位 <span style="color:#B59BBF;font-size:12px;">(选填)</span></label><input id="bUnit" value="${esc(b? b.unit||'':'')}" placeholder="包 / 罐 / 瓶…"></div>
     </div>
     <div class="row" style="margin-top:14px;"><button class="btn p block" id="saveBill">保存</button></div>`);
   let cat=b?b.cat:'奶粉';
@@ -2520,8 +2520,9 @@ function openBill(id){
     const name=document.getElementById('bName').value.trim();
     const date=document.getElementById('bDate').value||today();
     const price=parseFloat(document.getElementById('bPrice').value);
-    const qty=parseInt(document.getElementById('bQty').value)||1;
-    const unit=document.getElementById('bUnit').value.trim()||'件';
+    const qtv=document.getElementById('bQty').value.trim();
+    const qty=qtv?parseInt(qtv):'';
+    const unit=document.getElementById('bUnit').value.trim();
     if(!name){alert('请填写名称');return;}
     if(isNaN(price)||price<0){alert('请填写正确的价格');return;}
     if(b){Object.assign(b,{name,cat,date,price,qty,unit});}
