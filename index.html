@@ -1749,12 +1749,12 @@ function actList(fc,q){
   }).join('');
 }
 /* ================= 购物 · 宝宝物品账单 ================= */
-const BILL_CATS=['奶粉','尿不湿','衣物','玩具','辅食','零食','医疗','鞋','其他'];
-const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','衣物':'#FFEBDD','玩具':'#E5EBFF','辅食':'#FFF3D1','零食':'#FFF6D8','医疗':'#E8E5FA','鞋':'#E0F2F1','其他':'#EDEDED'};
+const BILL_CATS=['奶粉','尿不湿','穿','玩具','辅食','零食','护肤','日用品','医疗','其他'];
+const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','穿':'#FFEBDD','玩具':'#E5EBFF','辅食':'#FFF3D1','零食':'#FFF6D8','护肤':'#FDE8F1','日用品':'#E4EAF7','医疗':'#E8E5FA','其他':'#EDEDED'};
 let shopView={mode:'month',y:new Date().getFullYear(),m:new Date().getMonth()+1};
 function billsSorted(){return S.supplies.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));}
 function billInView(b){const d=b.date||'';const y=shopView.y,mm=(shopView.m<10?'0':'')+shopView.m;return shopView.mode==='year'?d.slice(0,4)===String(y):d.slice(0,7)===`${y}-${mm}`;}
-function billCat(b){return BILL_CATS.indexOf(b.cat)>=0?b.cat:'其他';}
+function billCat(b){const c=b.cat;if(c==='衣物'||c==='鞋')return '穿';return BILL_CATS.indexOf(c)>=0?c:'其他';} // 旧「衣物/鞋」账单归入「穿」
 function billMoney(b){return (+b.price)||0;} // 价格为总价，统计直接用，不再乘数量
 function billUnitPrice(b){const q=(+b.qty);if(!q)return null;return billMoney(b)/q;} // 单价 = 总价 ÷ 数量；未填数量则不算单价
 function fmtMoney(n){return (Math.round(n*100)/100).toLocaleString('zh-CN');}
@@ -1767,9 +1767,10 @@ const BILL_CAT_KEYS=[
   ['辅食',['米粉','面条','粥','肉泥','菜泥','鱼泥','鳕鱼','碎面','粒粒面','果泥','辅食油']],
   ['零食',['饼干','磨牙棒','溶豆','泡芙','米饼','虾条','山楂','薯片','酸奶','奶酪棒']],
   ['奶粉',['奶粉','配方奶','一段','二段','三段','羊奶粉']],
-  ['衣物',['衣服','上衣','裤子','袜子','裙子','T恤','卫衣','外套','睡衣','打底','套装','连体衣']],
-  ['鞋',['鞋','凉鞋','运动鞋','帆布鞋','靴','拖鞋','学步鞋','机能鞋']],
-  ['玩具',['玩具','积木','小车','汽车','娃娃','玩偶','绘本','书','拼图','球','乐高','摇铃']]
+  ['穿',['衣服','上衣','裤子','袜子','裙子','T恤','卫衣','外套','睡衣','打底','套装','连体衣','鞋','凉鞋','运动鞋','帆布鞋','靴','拖鞋','学步鞋','机能鞋']],
+  ['玩具',['玩具','积木','小车','汽车','娃娃','玩偶','绘本','书','拼图','球','乐高','摇铃']],
+  ['护肤',['面霜','润肤','面脂','护肤','屁屁霜','护臀','抚触油','润肤乳','防晒','湿疹膏','紫草油','身体乳','洗护']],
+  ['日用品',['湿巾','纸巾','纸','抽纸','棉柔巾','柔纸巾','牙胶','安抚','吸管杯','水杯','奶瓶刷','指甲剪','护理垫','爽身粉','沐浴露','洗发水','浴巾','口水巾']]
 ];
 function detectBillCat(txt){
   for(let i=0;i<BILL_CAT_KEYS.length;i++){const c=BILL_CAT_KEYS[i][0],ks=BILL_CAT_KEYS[i][1];for(const k of ks){if(txt.indexOf(k)>=0)return c;}}
@@ -2482,7 +2483,7 @@ function openBill(id){
     </div>
     <label class="fld">名称</label><input id="bName" value="${esc(b? b.name:'')}" placeholder="如：纸尿裤 L码">
     <label class="fld">分类</label>
-    <div class="seg">${BILL_CATS.map(c=>`<button data-bc="${c}" class="${(b?b.cat:c)==='奶粉'?'on':''}">${c}</button>`).join('')}</div>
+    <div class="seg">${BILL_CATS.map(c=>`<button data-bc="${c}" class="${c===(b?billCat(b):'奶粉')?'on':''}">${c}</button>`).join('')}</div>
     <div class="grid c2">
       <div><label class="fld">购买日期</label><input type="date" id="bDate" value="${esc(b? b.date:today())}"></div>
       <div><label class="fld">总价 (元)</label><input type="number" id="bPrice" value="${b?b.price:''}" step="0.01" placeholder="填总价，如 89.5"></div>
@@ -2490,7 +2491,7 @@ function openBill(id){
       <div><label class="fld">单位 <span style="color:#B59BBF;font-size:12px;">(选填)</span></label><input id="bUnit" value="${esc(b? b.unit||'':'')}" placeholder="包 / 罐 / 瓶…"></div>
     </div>
     <div class="row" style="margin-top:14px;"><button class="btn p block" id="saveBill">保存</button></div>`);
-  let cat=b?b.cat:'奶粉';
+  let cat=b?billCat(b):'奶粉';
   const sm=document.getElementById('billSmart');
   function applyBillSmart(txt){
     const r=parseBill(txt);
