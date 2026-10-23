@@ -1751,7 +1751,7 @@ function actList(fc,q){
 /* ================= 购物 · 宝宝物品账单 ================= */
 const BILL_CATS=['奶粉','尿不湿','穿','玩具','辅食','零食','护肤','日用品','医疗','其他'];
 const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','穿':'#FFEBDD','玩具':'#E5EBFF','辅食':'#FFF3D1','零食':'#FFF6D8','护肤':'#FDE8F1','日用品':'#E4EAF7','医疗':'#E8E5FA','其他':'#EDEDED'};
-let shopView={mode:'month',y:new Date().getFullYear(),m:new Date().getMonth()+1};
+let shopView={mode:'month',y:new Date().getFullYear(),m:new Date().getMonth()+1,cat:null}; // cat：点图表某一类后只看这一类明细
 function billsSorted(){return S.supplies.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));}
 function billInView(b){const d=b.date||'';const y=shopView.y,mm=(shopView.m<10?'0':'')+shopView.m;return shopView.mode==='year'?d.slice(0,4)===String(y):d.slice(0,7)===`${y}-${mm}`;}
 function billCat(b){const c=b.cat;if(c==='衣物'||c==='鞋')return '穿';return BILL_CATS.indexOf(c)>=0?c:'其他';} // 旧「衣物/鞋」账单归入「穿」
@@ -1815,21 +1815,25 @@ function shopBars(list){
   const rows=BILL_CATS.filter(c=>catSum[c]).map(c=>({c,n:list.filter(b=>billCat(b)===c).length,v:catSum[c]})).sort((a,b)=>b.v-a.v);
   if(!rows.length)return '';
   const max=rows[0].v||1;
-  return `<div class="sec" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 14px 6px;margin-bottom:14px;">
-    <div class="tt" style="color:#5A4A5A;">📊 ${shopView.mode==='month'?'本月':'本年'}分类花销 <span class="muted" style="font-size:12px;font-weight:600;color:#B9A8C4;">（消费最多在上面）</span></div>
+  const active=shopView.cat;
+  return `<div class="sec" style="background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 14px 8px;margin-bottom:14px;">
+    <div class="tt" style="color:#5A4A5A;">📊 ${shopView.mode==='month'?'本月':'本年'}分类花销 <span class="muted" style="font-size:12px;font-weight:600;color:#B9A8C4;">（点一下分类，下面只看这一类）</span></div>
     ${rows.map(r=>{
-      const w=Math.max(4,Math.round(r.v/max*100)),col=CAT_COLOR[r.c]||'#c9a4d8';
-      return `<div style="display:flex;align-items:center;gap:9px;margin:7px 0;">
+      const w=Math.max(4,Math.round(r.v/max*100)),col=CAT_COLOR[r.c]||'#c9a4d8',on=active===r.c;
+      return `<button data-smcat="${r.c}" aria-pressed="${on?'true':'false'}" style="display:flex;align-items:center;gap:9px;margin:7px 0;width:100%;border:2px solid ${on?'#B58BD8':'transparent'};background:${on?'#FBF4FF':'transparent'};border-radius:12px;padding:5px 6px;text-align:left;cursor:pointer;font-family:inherit;">
         <span style="flex:none;min-width:40px;text-align:center;padding:3px 8px;border-radius:8px;background:${col};font-weight:700;font-size:13px;color:#5A3A3A;">${r.c}</span>
-        <div style="flex:1;height:20px;background:#F3EFF5;border-radius:6px;overflow:hidden;"><div style="width:${w}%;height:100%;background:linear-gradient(90deg,${col},${col});opacity:.85;border-radius:6px;"></div></div>
-        <b style="flex:none;min-width:76px;text-align:right;font-size:14px;color:#6B4A6B;">¥${fmtMoney(r.v)}<span class="muted" style="display:block;font-size:11px;color:#B9A8C4;">${r.n}笔</span></b>
-      </div>`;}).join('')}
+        <div style="flex:1;height:20px;background:#F3EFF5;border-radius:6px;overflow:hidden;"><div style="width:${w}%;height:100%;background:${col};opacity:${on?'1':'.8'};border-radius:6px;"></div></div>
+        <b style="flex:none;min-width:76px;text-align:right;font-size:14px;color:#6B4A6B;">¥${fmtMoney(r.v)}<span class="muted" style="display:block;font-size:11px;color:#B9A8C4;">${r.n}笔${on?' · 已选':''}</span></b>
+      </button>`;}).join('')}
+    ${active?`<div class="row" style="margin:4px 0 2px;"><button class="tbtn" data-smcat="">✕ 显示全部分类</button><span style="flex:1"></span></div>`:''}
   </div>`;
 }
 function rShop(){
   const list=billsSorted().filter(billInView);
   const total=list.reduce((s,b)=>s+billMoney(b),0);
   const barsHtml=shopBars(list);
+  const cat=shopView.cat;
+  const detail=cat?list.filter(b=>billCat(b)===cat):list;
   return `<div class="sec">
     <h2>${I.sup}购物 · 宝宝物品账单</h2>
     <p class="sub">记下总价即可（数量、单位选填）；按总价汇总月度 / 年度花费，填了数量才标单价</p>
@@ -1847,10 +1851,15 @@ function rShop(){
     <button class="tbtn" data-smnav="1">下${shopView.mode==='month'?'月':'年'} ›</button>
   </div>
   ${barsHtml?barsHtml:`<div class="catEmpty ${list.length?'hasrows':''}">${list.length?'这个时段还没有账单':'还没有账单，点「＋ 记一笔」开始记第一笔吧'}</div>`}
-  <div id="billList">${billList(list)}</div>`;
+  <div class="row" style="margin:0 0 10px;align-items:center;">
+    <b style="font-size:16px;color:#5A4A5A;">${cat?'📂 '+esc(cat)+' · 明细':'🧾 全部明细'}</b>
+    <span style="flex:1"></span>
+    ${cat?`<span class="muted" style="font-size:13px;color:#B9A8C4;">${detail.length} 笔 · ¥${fmtMoney(detail.reduce((s,b)=>s+billMoney(b),0))}</span>`:''}
+  </div>
+  <div id="billList">${billList(detail,cat)}</div>`;
 }
-function billList(list){
-  if(!list.length)return `<div class="empty">${(S.supplies||[]).length?'这个时段没有记录':'还没有账单，点「＋ 记一笔」添加第一笔'}</div>`;
+function billList(list,cat){
+  if(!list.length)return `<div class="empty">${cat?'这一类在这个时段没有账单':((S.supplies||[]).length?'这个时段没有记录':'还没有账单，点「＋ 记一笔」添加第一笔')}</div>`;
   return `<div class="grid c2">${list.map(b=>{const c=billCat(b);const hasQ=!!b.qty;const up=hasQ?billUnitPrice(b):null;return `<div class="item">
       <div class="top"><span class="nm">${esc(b.name)}</span><span class="cn" style="background:${CAT_COLOR[c]||'#eee'}">${c}</span></div>
       <div class="nt">${esc(b.date)}${hasQ?` · ${esc(b.qty)}${esc(b.unit||'件')}`:''}</div>
@@ -2019,11 +2028,17 @@ function bindPage(){
   const ab=document.getElementById('addBill');if(ab)ab.onclick=()=>openBill();
   document.querySelectorAll('[data-ebill]').forEach(b=>b.onclick=()=>openBill(b.dataset.ebill));
   document.querySelectorAll('[data-dbill]').forEach(b=>b.onclick=()=>{if(confirm('删除这笔账单？')){S.supplies=S.supplies.filter(x=>x.id!==b.dataset.dbill);save();render();}});
-  document.querySelectorAll('[data-smmode]').forEach(b=>b.onclick=()=>{shopView.mode=b.dataset.smmode;render();});
+  document.querySelectorAll('[data-smmode]').forEach(b=>b.onclick=()=>{shopView.mode=b.dataset.smmode;shopView.cat=null;render();});
+  document.querySelectorAll('[data-smcat]').forEach(b=>b.onclick=()=>{
+    const c=b.dataset.smcat;
+    shopView.cat=(!c||shopView.cat===c)?null:c; // 点同一类再点一次＝取消筛选
+    render();
+  });
   document.querySelectorAll('[data-smnav]').forEach(b=>b.onclick=()=>{
     const d=+b.dataset.smnav;
     if(shopView.mode==='month'){const nm=shopView.m+d;if(nm<1){shopView.m=12;shopView.y--;}else if(nm>12){shopView.m=1;shopView.y++;}else{shopView.m=nm;}}
     else{shopView.y+=d;}
+    shopView.cat=null; // 换月/年后回到全部明细，避免误以为没数据
     render();
   });
   // 今日学习：浏览全部库 / 返回今日学习
