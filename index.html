@@ -844,8 +844,8 @@ function seed(){
   S.allergen={'谷物类':{'大米':addD(t,-40)},'蔬菜类':{'南瓜':addD(t,-38),'胡萝卜':addD(t,-35),'土豆':addD(t,-32)},'水果类':{'苹果':addD(t,-30),'香蕉':addD(t,-28)},'蛋奶类':{'蛋黄':addD(t,-26)}};
   S.gamesDone=[{id:uid(),date:addD(t,-2),gid:dayIdx(addD(t,-2))%GAMES.length}];
   S.supplies=[
-    {id:uid(),name:'纸尿裤 L码',cat:'尿不湿',date:addD(t,-15),price:99,qty:1,unit:'包'},
-    {id:uid(),name:'婴儿湿巾',cat:'尿不湿',date:addD(t,-10),price:29,qty:3,unit:'包'},
+    {id:uid(),name:'拉拉裤 L码',cat:'拉拉裤',date:addD(t,-15),price:99,qty:1,unit:'包'},
+    {id:uid(),name:'婴儿湿巾',cat:'日用品',date:addD(t,-10),price:29,qty:3,unit:'包'},
     {id:uid(),name:'3段奶粉',cat:'奶粉',date:addD(t,-7),price:268,qty:2,unit:'罐'}
   ];
   S.seed=true;
@@ -1756,12 +1756,12 @@ function actList(fc,q){
   }).join('');
 }
 /* ================= 购物 · 宝宝物品账单 ================= */
-const BILL_CATS=['奶粉','尿不湿','穿','玩具','绘本','辅食','零食','护肤','日用品','医疗','其他'];
-const CAT_COLOR={'奶粉':'#FFE3E7','尿不湿':'#E4F4E0','穿':'#FFEBDD','玩具':'#E5EBFF','绘本':'#DFF3E9','辅食':'#FFF3D1','零食':'#FFF6D8','护肤':'#FDE8F1','日用品':'#E4EAF7','医疗':'#E8E5FA','其他':'#EDEDED'};
+const BILL_CATS=['奶粉','拉拉裤','穿','玩具','绘本','辅食','零食','护肤','日用品','医疗','其他'];
+const CAT_COLOR={'奶粉':'#FFE3E7','拉拉裤':'#E4F4E0','穿':'#FFEBDD','玩具':'#E5EBFF','绘本':'#DFF3E9','辅食':'#FFF3D1','零食':'#FFF6D8','护肤':'#FDE8F1','日用品':'#E4EAF7','医疗':'#E8E5FA','其他':'#EDEDED'};
 let shopView={mode:'month',y:new Date().getFullYear(),m:new Date().getMonth()+1,cat:null}; // cat：点图表某一类后只看这一类明细
 function billsSorted(){return S.supplies.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));}
 function billInView(b){const d=b.date||'';const y=shopView.y,mm=(shopView.m<10?'0':'')+shopView.m;return shopView.mode==='year'?d.slice(0,4)===String(y):d.slice(0,7)===`${y}-${mm}`;}
-function billCat(b){const c=b.cat;if(c==='衣物'||c==='鞋')return '穿';return BILL_CATS.indexOf(c)>=0?c:'其他';} // 旧「衣物/鞋」账单归入「穿」
+function billCat(b){const c=b.cat;if(c==='衣物'||c==='鞋')return '穿';if(c==='尿不湿')return '拉拉裤';return BILL_CATS.indexOf(c)>=0?c:'其他';} // 旧「衣物/鞋」归「穿」，旧「尿不湿」归「拉拉裤」
 function billMoney(b){return (+b.price)||0;} // 价格为总价，统计直接用，不再乘数量
 function billUnitPrice(b){const q=(+b.qty);if(!q)return null;return billMoney(b)/q;} // 单价 = 总价 ÷ 数量；未填数量则不算单价
 function fmtMoney(n){return (Math.round(n*100)/100).toLocaleString('zh-CN');}
@@ -1769,7 +1769,7 @@ function shopPeriodLabel(){return shopView.mode==='month'?`${shopView.y}年${sho
 /* ── 「+记一笔」智能识别：输入一句“买了什么”自动填名称/分类/总价/数量/单位 ── */
 const BILL_UNITS='包|罐|瓶|件|箱|盒|双|个|袋|支|条|套|组|斤|千克|公斤|筒|捆|片';
 const BILL_CAT_KEYS=[
-  ['尿不湿',['纸尿裤','尿不湿','尿布','拉拉裤','尿裤','裤型']],
+  ['拉拉裤',['拉拉裤','纸尿裤','尿不湿','尿布','尿裤','裤型']],
   ['医疗',['药','维生素','钙片','D3','退烧','益生菌','蒙脱石','口罩','棉签','体温计','疫苗','雾化','创可贴','纱布']],
   ['辅食',['米粉','面条','粥','肉泥','菜泥','鱼泥','鳕鱼','碎面','粒粒面','果泥','辅食油']],
   ['零食',['饼干','磨牙棒','溶豆','泡芙','米饼','虾条','山楂','薯片','酸奶','奶酪棒']],
